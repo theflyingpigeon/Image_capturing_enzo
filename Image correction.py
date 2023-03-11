@@ -1,25 +1,9 @@
 import cv2
 import numpy as np
 from PIL import Image, ImageFilter
-# import matplotlib.pyplot as plt
 
 
 def run():
-    image = cv2.imread('coin_error.png')
-    auto_result = auto_brightness(image, 128)
-    cv2.imshow('auto_result', auto_result)
-    cv2.imshow('image', image)
-    correction_result = median_blur(auto_result)
-    cv2.imshow("After noise correction", correction_result)
-    cv2.imwrite("Corrected_image_v1.png", correction_result)
-    # sharp_image = sharpen_image(correction_result)
-    # cv2.imshow("Sharpen Image", sharp_image)
-    # cv2.imwrite("Corrected_image.png", sharp_image)
-
-    cv2.waitKey()
-
-
-def run_v2():
     image = cv2.imread('coin_error.png')
     cv2.imshow("original", image)
 
@@ -83,6 +67,7 @@ def median_blur(image, kernel_size=3):
             output[y, x, :] = median.astype(np.uint8)
     return output
 
+
 def sharpen_image(image):
     kernel = np.array([[0, -1, 0],
                        [-1, 5, -1],
@@ -92,4 +77,4 @@ def sharpen_image(image):
 
 
 if __name__ == "__main__":
-    run_v2()
+    run()
