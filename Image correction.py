@@ -1,14 +1,15 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+from PIL import Image, ImageFilter
+# import matplotlib.pyplot as plt
 
 
 def run():
     image = cv2.imread('coin_error.png')
-    auto_result = brightness_correction(image)
+    auto_result = auto_brightness(image, 128)
     cv2.imshow('auto_result', auto_result)
     cv2.imshow('image', image)
-    correction_result = noise_correction(auto_result)
+    correction_result = median_blur(auto_result)
     cv2.imshow("After noise correction", correction_result)
     cv2.imwrite("Corrected_image_v1.png", correction_result)
     # sharp_image = sharpen_image(correction_result)
@@ -22,96 +23,65 @@ def run_v2():
     image = cv2.imread('coin_error.png')
     cv2.imshow("original", image)
 
-    correction_result = noise_correction(image)
+    correction_result = median_blur(image)
     cv2.imshow("After noise correction", correction_result)
     cv2.imwrite("Corrected_image_v1.png", correction_result)
 
     # auto brightness
-    auto_result = brightness_correction(correction_result)
-    cv2.imshow('auto_result', auto_result)
+    auto_result = auto_brightness(correction_result, 64)
+    cv2.imshow('after auto brightness', auto_result)
+
+    sharpen = sharpen_image(auto_result)
+    cv2.imshow("end result", sharpen)
 
     cv2.waitKey()
 
 
-def brightness_correction(image: str, clip_hist_percent=10):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Calculate grayscale histogram
-    hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
-    hist_size: int = len(hist)
-
-    # Calculate cumulative distribution from the histogram
-    accumulator = [float(hist[0])]
-    for index in range(1, hist_size):
-        accumulator.append(accumulator[index - 1] + float(hist[index]))
-
-    # Locate points to clip
-    maximum: float = accumulator[-1]
-    clip_hist_percent *= (maximum / 100.0)
-    clip_hist_percent /= 2.0
-
-    # Locate left cut
-    minimum_gray: int = 0
-    while accumulator[minimum_gray] < clip_hist_percent:
-        minimum_gray += 1
-
-    # Locate right cut
-    maximum_gray = hist_size - 1
-    while accumulator[maximum_gray] >= (maximum - clip_hist_percent):
-        maximum_gray -= 1
-
-    # Calculate alpha and beta values
-    alpha: float = 255 / (maximum_gray - minimum_gray)
-    beta: float = -minimum_gray * alpha
-
-    # Calculate new histogram with desired range and show histogram 
-    new_hist = cv2.calcHist([gray], [0], None, [256], [minimum_gray, maximum_gray])
-    plt.plot(hist)
-    plt.plot(new_hist)
-    plt.xlim([0, 256])
-    plt.show()
-
-    auto_result = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
-    return auto_result
+def auto_brightness(img, target_mean):
+    # Convert image to grayscale
+    cv2.imwrite("after_denoise.png", img)
+    gray_image = Image.open("after_denoise.png").convert('L')
+    # Convert image to numpy array
+    array = np.array(gray_image)
+    # Compute current mean brightness
+    current_mean = np.mean(array)
+    # Compute scaling factor
+    scale_factor = target_mean / current_mean
+    # Apply scaling
+    scaled_array = np.clip(array * scale_factor, 0, 255).astype(np.uint8)
+    # Convert back to PIL image
+    output = Image.fromarray(scaled_array)
+    # Convert to RGB if necessary
+    # if image.mode == 'RGB':
+    #     output = output.convert('RGB')
+    open_cv_image = np.array(output)
+    return open_cv_image
 
 
-def noise_correction(image):
+def median_blur(image, kernel_size=3):
+    # Get image dimensions
     height, width = image.shape[:2]
-    dst: cv2.Mat = image
-    window: list[9] = []
-
+    # Create output image
+    output = np.zeros((height, width, 3), dtype=np.uint8)
+    # Get kernel radius
+    kernel_radius = kernel_size // 2
+    # Iterate over image pixels
     for y in range(height):
         for x in range(width):
-            dst[y][x] = 0.0
-
-    for y in range(height):
-        for x in range(width):
-            if x != 0 and x < 1919 and y != 0 and y < 1047:
-
-            # sort the window to find median
-            # cv2.insertionSort(window)
-
-            # assign the median to centered element of the matrix
-            dst[y][x] = window[4]
-
-    cv2.imshow("iets", dst)
-    cv2.waitKey()
-
-    img_without_noise = cv2.medianBlur(image, 3)
-    return img_without_noise
-
-
-def insertionSort():
-    x, y: int = 0
-    window: list[9] = []
-
-    for i in range(x):
-        temp = window[i]
-        for j in range(y):
-
-
-
-
+            # Get kernel indices
+            ymin = max(y - kernel_radius, 0)
+            ymax = min(y + kernel_radius + 1, height)
+            xmin = max(x - kernel_radius, 0)
+            xmax = min(x + kernel_radius + 1, width)
+            # Extract kernel
+            kernel = image[ymin:ymax, xmin:xmax, :]
+            # Flatten kernel
+            kernel_flat = kernel.reshape(-1, 3)
+            # Get median of each channel
+            median = np.median(kernel_flat, axis=0)
+            # Set output pixel to median
+            output[y, x, :] = median.astype(np.uint8)
+    return output
 
 def sharpen_image(image):
     kernel = np.array([[0, -1, 0],
