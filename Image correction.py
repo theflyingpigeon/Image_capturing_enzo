@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 
-def run():
+def main():
     image = cv2.imread('coin_error.png')
     cv2.imshow("original", image)
 
@@ -33,11 +33,7 @@ def auto_brightness(img, target_mean):
     scale_factor = target_mean / current_mean
     # Apply scaling
     scaled_array = np.clip(array * scale_factor, 0, 255).astype(np.uint8)
-    # Convert back to PIL image
     output = Image.fromarray(scaled_array)
-    # Convert to RGB if necessary
-    # if image.mode == 'RGB':
-    #     output = output.convert('RGB')
     open_cv_image = np.array(output)
     return open_cv_image
 
@@ -77,4 +73,4 @@ def sharpen_image(image):
 
 
 if __name__ == "__main__":
-    run()
+    main()
